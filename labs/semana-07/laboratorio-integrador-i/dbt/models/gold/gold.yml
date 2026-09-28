@@ -1,0 +1,103 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Una fila por fecha calendario entre 2024 y 2027.
+    columns:
+      - name: date_key
+        tests: [not_null, unique]
+      - name: date_day
+        tests: [not_null, unique]
+
+  - name: dim_location
+    description: Una fila por zona TLC más el miembro desconocido -1.
+    columns:
+      - name: location_key
+        tests: [not_null, unique]
+      - name: zone_name
+        tests: [not_null]
+
+  - name: dim_vendor
+    description: Proveedores TPEP definidos por el diccionario oficial TLC.
+    columns:
+      - name: vendor_key
+        tests: [not_null, unique]
+      - name: vendor_name
+        tests: [not_null]
+
+  - name: dim_payment_type
+    description: Formas de pago definidas por TLC.
+    columns:
+      - name: payment_type_key
+        tests: [not_null, unique]
+      - name: payment_type_name
+        tests: [not_null]
+
+  - name: dim_rate_code
+    description: Tarifas finales definidas por TLC.
+    columns:
+      - name: rate_code_key
+        tests: [not_null, unique]
+      - name: rate_code_name
+        tests: [not_null]
+
+  - name: fct_trips
+    description: Una fila por viaje Yellow Taxi válido y deduplicado.
+    columns:
+      - name: trip_sk
+        tests: [not_null, unique]
+      - name: pickup_date_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: dropoff_date_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: pickup_location_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_location')
+              field: location_key
+      - name: dropoff_location_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_location')
+              field: location_key
+      - name: vendor_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_vendor')
+              field: vendor_key
+      - name: payment_type_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_payment_type')
+              field: payment_type_key
+      - name: rate_code_key
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_rate_code')
+              field: rate_code_key
+      - name: trip_count
+        tests: [not_null]
+      - name: source_period
+        tests: [not_null]
+
+  - name: agg_monthly_kpis
+    description: Métricas mensuales listas para análisis y validación de negocio.
+    columns:
+      - name: source_period
+        tests: [not_null, unique]
+      - name: trip_count
+        tests: [not_null]
+

@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'NYC_TAXI_DB') }}"
+    schema: BRONZE
+    description: Datos originales cargados desde las fuentes oficiales de NYC TLC.
+    tables:
+      - name: yellow_taxi_raw
+        identifier: YELLOW_TAXI_RAW
+        description: Una fila por registro Parquet, conservado como VARIANT con metadata.
+        columns:
+          - name: raw_record
+            tests: [not_null]
+          - name: source_file
+            tests: [not_null]
+          - name: source_period
+            tests: [not_null]
+          - name: source_row_number
+            tests: [not_null]
+          - name: loaded_at
+            tests: [not_null]
+
+      - name: taxi_zone_lookup_raw
+        identifier: TAXI_ZONE_LOOKUP_RAW
+        description: Catálogo oficial de zonas TLC tal como llega en CSV.
+        columns:
+          - name: source_file
+            tests: [not_null]
+          - name: source_row_number
+            tests: [not_null]
+          - name: loaded_at
+            tests: [not_null]
+
+      - name: ingestion_audit
+        identifier: INGESTION_AUDIT
+        description: Manifiesto de archivos y conteos cargados exitosamente.
+        columns:
+          - name: dataset
+            tests: [not_null]
+          - name: source_period
+            tests: [not_null]
+          - name: file_sha256
+            tests: [not_null]
+          - name: row_count
+            tests: [not_null]
+

@@ -1,0 +1,101 @@
+id: nyc_taxi_end_to_end
+namespace: labs.semana07
+description: |
+  Pipeline ELT reproducible: 20 archivos NYC Yellow Taxi -> Snowflake Bronze
+  -> dbt Silver -> dbt Gold. Descarga y carga los meses secuencialmente para
+  no llenar el disco local; cada periodo se reemplaza de forma transaccional.
+
+labels:
+  project: laboratorio-integrador-i
+  source: nyc-yellow-taxi
+  architecture: bronze-silver-gold
+
+inputs:
+  - id: periods
+    type: STRING
+    defaults: "2025-01,2025-02,2025-03,2025-04,2025-05,2025-06,2025-07,2025-08,2025-09,2025-10,2025-11,2025-12,2026-01,2026-02,2026-03,2026-04,2026-05,2026-06,2026-07,2026-08"
+    description: Periodos separados por coma, formato YYYY-MM.
+
+  - id: fail_on_missing
+    type: BOOLEAN
+    defaults: true
+    description: Aborta si la fuente oficial aún no publicó alguno de los 20 archivos.
+
+  - id: enforce_20_periods
+    type: BOOLEAN
+    defaults: true
+    description: Ejecuta el test que exige los 20 meses; usar false solo para una demostración parcial.
+
+concurrency:
+  limit: 1
+  behavior: QUEUE
+
+tasks:
+  - id: ingest_bronze
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Descarga, verifica y carga las zonas y los 20 meses en Bronze.
+    containerImage: nyc-taxi-ingest:1.0
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      pullPolicy: NEVER
+      memory:
+        memory: 1GB
+    env:
+      NYC_TAXI_PERIODS: "{{ inputs.periods }}"
+      FAIL_ON_MISSING: "{{ inputs.fail_on_missing }}"
+      SNOWFLAKE_ACCOUNT: "{{ envs.snowflake_account }}"
+      SNOWFLAKE_USER: "{{ envs.snowflake_user }}"
+      SNOWFLAKE_PASSWORD: "{{ secret('SNOWFLAKE_PASSWORD') }}"
+      SNOWFLAKE_ROLE: "{{ envs.snowflake_role }}"
+      SNOWFLAKE_WAREHOUSE: "{{ envs.snowflake_warehouse }}"
+      SNOWFLAKE_DATABASE: "{{ envs.snowflake_database }}"
+    commands:
+      - python /opt/pipeline/ingest.py
+    timeout: PT6H
+    retry:
+      type: exponential
+      maxAttempts: 3
+      interval: PT1M
+      maxInterval: PT10M
+      maxDuration: PT45M
+      warningOnRetry: true
+
+  - id: dbt_build
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Construye Silver y Gold y ejecuta todos los tests de dbt.
+    containerImage: nyc-taxi-dbt:1.0
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      pullPolicy: NEVER
+      memory:
+        memory: 1GB
+    env:
+      SNOWFLAKE_ACCOUNT: "{{ envs.snowflake_account }}"
+      SNOWFLAKE_USER: "{{ envs.snowflake_user }}"
+      SNOWFLAKE_PASSWORD: "{{ secret('SNOWFLAKE_PASSWORD') }}"
+      SNOWFLAKE_ROLE: "{{ envs.snowflake_role }}"
+      SNOWFLAKE_WAREHOUSE: "{{ envs.snowflake_warehouse }}"
+      SNOWFLAKE_DATABASE: "{{ envs.snowflake_database }}"
+      ENFORCE_20_PERIODS: "{{ inputs.enforce_20_periods }}"
+    commands:
+      - bash /opt/dbt/run_dbt.sh
+    timeout: PT2H
+    retry:
+      type: constant
+      maxAttempts: 2
+      interval: PT2M
+
+errors:
+  - id: report_failure
+    type: io.kestra.plugin.core.log.Log
+    level: ERROR
+    message: >-
+      Falló el pipeline NYC Taxi. Revisa la primera tarea fallida. Una carga
+      incompleta nunca reemplaza el periodo anterior en Bronze.
+
+finally:
+  - id: execution_summary
+    type: io.kestra.plugin.core.log.Log
+    message: >-
+      Finalizó la ejecución {{ execution.id }}. Consulta el estado terminal y
+      los resultados de dbt en la vista de ejecución.

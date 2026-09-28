@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: stg_yellow_taxi_trips
+    description: Tipificación, estandarización y clasificación de calidad de cada fila Bronze.
+    columns:
+      - name: trip_sk
+        tests: [not_null]
+      - name: source_period
+        tests: [not_null]
+      - name: source_row_number
+        tests: [not_null]
+      - name: dq_status
+        tests: [not_null]
+      - name: record_hash
+        tests: [not_null]
+
+  - name: trips_clean
+    description: Viajes válidos y sin duplicados exactos; base para el esquema estrella.
+    columns:
+      - name: trip_sk
+        tests: [not_null, unique]
+      - name: pickup_at
+        tests: [not_null]
+      - name: dropoff_at
+        tests: [not_null]
+      - name: pickup_location_id
+        tests: [not_null]
+      - name: dropoff_location_id
+        tests: [not_null]
+      - name: source_period
+        tests: [not_null]
+
+  - name: taxi_zones_clean
+    description: Catálogo TLC tipificado, normalizado y deduplicado por LocationID.
+    columns:
+      - name: location_id
+        tests: [not_null, unique]
+      - name: borough
+        tests: [not_null]
+      - name: zone_name
+        tests: [not_null]
+
+  - name: dq_trips_summary
+    description: Conteos de aceptación, rechazo y anomalías por archivo mensual.
+    columns:
+      - name: source_period
+        tests: [not_null, unique]
+      - name: raw_row_count
+        tests: [not_null]
+      - name: usable_row_count
+        tests: [not_null]
+

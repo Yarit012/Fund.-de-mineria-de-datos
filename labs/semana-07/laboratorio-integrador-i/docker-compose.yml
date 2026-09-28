@@ -1,0 +1,70 @@
+name: nyc-taxi-lab
+
+services:
+  kestra-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: kestra
+      POSTGRES_DB: kestra
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kestra -d kestra"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - kestra-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  kestra:
+    image: kestra/kestra:${KESTRA_VERSION:-v1.3.40}
+    user: "root"
+    command:
+      - server
+      - standalone
+      - --worker-thread=4
+      - --config
+      - /etc/kestra/application.yml
+      - --flow-path
+      - /etc/kestra/flows
+    env_file:
+      - path: .env.kestra
+        required: false
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx1024m"
+    ports:
+      - "8080:8080"
+    depends_on:
+      kestra-db:
+        condition: service_healthy
+    volumes:
+      - kestra-storage:/app/storage
+      - ./kestra/application.yml:/etc/kestra/application.yml:ro
+      - ./kestra/flows:/etc/kestra/flows:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/kestra-wd:/tmp/kestra-wd
+    restart: unless-stopped
+
+  pipeline-ingest:
+    image: nyc-taxi-ingest:1.0
+    build:
+      context: ./ingest
+    profiles: ["jobs"]
+    env_file:
+      - path: .env
+        required: false
+    command: ["python", "/opt/pipeline/ingest.py"]
+
+  pipeline-dbt:
+    image: nyc-taxi-dbt:1.0
+    build:
+      context: ./dbt
+    profiles: ["jobs"]
+    env_file:
+      - path: .env
+        required: false
+    command: ["bash", "/opt/dbt/run_dbt.sh"]
+
+volumes:
+  kestra-db-data:
+  kestra-storage:
