@@ -67,6 +67,10 @@ El script valida la configuración, construye las imágenes de ingesta/dbt y lev
 - Kestra: <http://localhost:8080>
 - PostgreSQL interno de Kestra, sin puerto público.
 
+El script también comprueba que `labs.semana07/nyc_taxi_end_to_end` exista en
+Kestra. Si el flujo no fue precargado al iniciar el servidor, lo importa
+automáticamente desde `kestra/flows/nyc_taxi_end_to_end.yml` mediante la API.
+
 Comprueba el entorno con:
 
 ```powershell

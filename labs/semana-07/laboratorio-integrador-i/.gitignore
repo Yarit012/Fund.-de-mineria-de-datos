@@ -1,0 +1,13 @@
+.env
+.env.kestra
+logs/
+target/
+dbt/target/
+dbt/logs/
+dbt_packages/
+dbt/dbt_packages/
+dbt/.user.yml
+__pycache__/
+*.pyc
+*.parquet
+.ruff_cache/
