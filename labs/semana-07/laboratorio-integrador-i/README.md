@@ -198,6 +198,3 @@ labs/semana-07/laboratorio-integrador-i/
 
 Agrégala al repo de la clase, haz commit/push y entrega el enlace de GitHub a esta carpeta. No subas `.env`, `.env.kestra`, contraseñas, datos Parquet, `target/` ni logs.
 
-## Uso de IA
-
-Se utilizó IA para proponer la estructura, revisar idempotencia y generar una primera versión del código y la documentación. El equipo debe ejecutar el pipeline, revisar los resultados de calidad y poder explicar cada decisión antes de entregarlo.
